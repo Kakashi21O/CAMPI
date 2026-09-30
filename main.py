@@ -2,7 +2,7 @@ import time
 import cv2
 from camera import Camera
 from hand import HandDetector
-from gestures import detect_gesture, get_palm_center, detect_pinch
+from gestures import detect_gesture, get_palm_center
 from actions import ActionController
 
 DEBUG = False
@@ -47,37 +47,20 @@ def main():
                 gesture = detect_gesture(landmarks)
                 palm_pos = get_palm_center(landmarks)
 
-                # State update (FIST / OPEN_PALM)
+                # State update (FIST stops control, OPEN_PALM starts control)
                 state_action = actions.update_state(gesture)
                 if state_action != "IDLE":
                     last_action = state_action
                     debug(f"State transition: {state_action}")
 
-                if actions.control_enabled:
-                    # 1. Pinch click
-                    is_pinch, _ = detect_pinch(landmarks)
-                    click_act = actions.handle_click(is_pinch)
-                    if click_act:
-                        last_action = click_act
-
-                    # 2. Index cursor
-                    if gesture == "INDEX":
-                        cursor_act = actions.handle_cursor(landmarks[8])
-                        if cursor_act:
-                            last_action = cursor_act
-                    else:
-                        actions.prev_cursor_x = None
-                        actions.prev_cursor_y = None
-
-                    # 3. Vertical Scroll
-                    if gesture in ["OPEN_PALM", "NONE"] and not is_pinch:
-                        scroll_act = actions.handle_scroll(palm_pos[1] if palm_pos else None)
-                        if scroll_act:
-                            last_action = scroll_act
+                # Dedicated Scroll-Only Mode
+                if actions.control_enabled and gesture != "FIST":
+                    scroll_act = actions.handle_scroll(palm_pos)
+                    if scroll_act:
+                        last_action = scroll_act
             else:
+                actions.prev_palm_x = None
                 actions.prev_palm_y = None
-                actions.prev_cursor_x = None
-                actions.prev_cursor_y = None
 
             # On-screen HUD
             control_str = "ON" if actions.control_enabled else "OFF"
@@ -123,13 +106,12 @@ def main():
             # Debug overlay
             if DEBUG and landmarks:
                 h, w, _ = frame.shape
-                cv2.rectangle(frame, (w - 280, 20), (w - 20, 180), (30, 30, 30), -1)
+                cv2.rectangle(frame, (w - 280, 20), (w - 20, 160), (30, 30, 30), -1)
                 cv2.putText(frame, "DEBUG", (w - 260, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
                 cv2.putText(frame, f"Palm: {palm_pos[0]:.2f}, {palm_pos[1]:.2f}", (w - 260, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
                 cv2.putText(frame, f"Control: {actions.control_enabled}", (w - 260, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                cv2.putText(frame, f"Pinched: {actions.is_pinched}", (w - 260, 140), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-            cv2.imshow("CAMPI - Camera Gesture Control", frame)
+            cv2.imshow("CAMPI - Gesture Scrolling", frame)
 
             # Keys: Q = quit, ESC = disable control
             key = cv2.waitKey(1) & 0xFF
