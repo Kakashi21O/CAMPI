@@ -22,7 +22,8 @@ class ActionController:
         self.stable_threshold = 3
 
         # Sensitivity thresholds
-        self.scroll_threshold = 0.04
+        self.scroll_deadzone = 0.025
+        self.scroll_max_delta = 0.15
         self.smooth_factor = 0.3
         self.prev_cursor_x = None
         self.prev_cursor_y = None
@@ -62,7 +63,12 @@ class ActionController:
         return action
 
     def handle_scroll(self, palm_y):
-        """Scrolls up or down if vertical movement crosses threshold."""
+        """
+        Scrolls up or down smoothly.
+        In camera coordinates, Y=0 is top, Y=1 is bottom:
+        - Moving hand UP means palm_y decreases (prev_palm_y - palm_y > 0) -> SCROLL UP
+        - Moving hand DOWN means palm_y increases (prev_palm_y - palm_y < 0) -> SCROLL DOWN
+        """
         if not self.control_enabled or palm_y is None:
             self.prev_palm_y = palm_y
             return None
@@ -70,16 +76,25 @@ class ActionController:
         action = None
         if self.prev_palm_y is not None:
             diff = self.prev_palm_y - palm_y
-            if diff > self.scroll_threshold:
-                # Upward in image coordinate space = smaller Y
-                self.mouse.scroll(0, 2)
-                action = "SCROLL_UP"
+            abs_diff = abs(diff)
+
+            if abs_diff > self.scroll_deadzone:
+                # Scale scroll amount dynamically based on speed: 1 to 5 ticks
+                clamped_delta = min(abs_diff, self.scroll_max_delta)
+                scroll_amount = int(1 + (clamped_delta - self.scroll_deadzone) / (self.scroll_max_delta - self.scroll_deadzone) * 4)
+
+                if diff > 0:
+                    self.mouse.scroll(0, scroll_amount)
+                    action = f"SCROLL_UP (+{scroll_amount})"
+                else:
+                    self.mouse.scroll(0, -scroll_amount)
+                    action = f"SCROLL_DOWN (-{scroll_amount})"
+                
+                # Update baseline smoothly to allow continuous scrolling
                 self.prev_palm_y = palm_y
-            elif diff < -self.scroll_threshold:
-                # Downward in image coordinate space = larger Y
-                self.mouse.scroll(0, -2)
-                action = "SCROLL_DOWN"
-                self.prev_palm_y = palm_y
+            else:
+                # Gradual decay of anchor if hovering in place
+                self.prev_palm_y = self.prev_palm_y + (palm_y - self.prev_palm_y) * 0.1
         else:
             self.prev_palm_y = palm_y
 

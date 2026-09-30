@@ -36,3 +36,17 @@ def test_actions_disabled_when_control_off():
     # Control is off
     assert act.handle_click(True) is None
     assert act.handle_scroll(0.4) is None
+
+
+def test_actions_scroll_up_and_down():
+    act = ActionController(screen_w=1920, screen_h=1080)
+    act.enable_control()
+    # Baseline
+    act.handle_scroll(0.50)
+    # Hand moves UP (palm Y decreases from 0.50 to 0.40)
+    up_action = act.handle_scroll(0.40)
+    assert up_action is not None and "SCROLL_UP" in up_action
+
+    # Hand moves DOWN (palm Y increases from 0.40 to 0.52)
+    down_action = act.handle_scroll(0.52)
+    assert down_action is not None and "SCROLL_DOWN" in down_action
