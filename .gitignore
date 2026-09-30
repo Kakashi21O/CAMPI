@@ -39,3 +39,6 @@ AI.md
 
 # Pytest / Cache
 .pytest_cache/
+
+# Model assets
+*.task

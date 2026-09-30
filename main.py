@@ -62,7 +62,7 @@ def main():
 
                     # 2. Index cursor
                     if gesture == "INDEX":
-                        cursor_act = actions.handle_cursor(landmarks.landmark[8])
+                        cursor_act = actions.handle_cursor(landmarks[8])
                         if cursor_act:
                             last_action = cursor_act
                     else:

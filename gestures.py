@@ -3,22 +3,22 @@ import math
 
 def is_finger_open(landmarks, tip_idx, pip_idx):
     """Returns True if fingertip is above PIP joint (lower Y in image coords)."""
-    return landmarks.landmark[tip_idx].y < landmarks.landmark[pip_idx].y
+    return landmarks[tip_idx].y < landmarks[pip_idx].y
 
 
 def is_thumb_open(landmarks):
     """Checks thumb extension by relative x/y distance between thumb tip (4) and MCP (2)."""
-    tip = landmarks.landmark[4]
-    ip = landmarks.landmark[3]
-    mcp = landmarks.landmark[2]
+    tip = landmarks[4]
+    ip = landmarks[3]
+    mcp = landmarks[2]
     # In mirrored image, thumb extension is measured horizontally relative to MCP
     return abs(tip.x - mcp.x) > abs(ip.x - mcp.x)
 
 
 def get_palm_center(landmarks):
     """Computes normalized (x, y) center using wrist (0) and middle MCP (9)."""
-    wrist = landmarks.landmark[0]
-    middle_mcp = landmarks.landmark[9]
+    wrist = landmarks[0]
+    middle_mcp = landmarks[9]
     return ((wrist.x + middle_mcp.x) / 2.0, (wrist.y + middle_mcp.y) / 2.0)
 
 
@@ -37,8 +37,8 @@ def get_finger_states(landmarks):
 
 def detect_pinch(landmarks, threshold=0.06):
     """Detects pinch if distance between thumb tip (4) and index tip (8) is below threshold."""
-    thumb_tip = landmarks.landmark[4]
-    index_tip = landmarks.landmark[8]
+    thumb_tip = landmarks[4]
+    index_tip = landmarks[8]
     dist = math.hypot(thumb_tip.x - index_tip.x, thumb_tip.y - index_tip.y)
     return dist < threshold, dist
 
